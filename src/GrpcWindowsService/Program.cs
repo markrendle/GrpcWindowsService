@@ -5,20 +5,24 @@ using Microsoft.Extensions.Hosting.WindowsServices;
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
+    // If running as a Windows Service, pre-set ContentRootPath
+    // to avoid UseWindowsService() changing it later.
     ContentRootPath = WindowsServiceHelpers.IsWindowsService()
         ? AppContext.BaseDirectory
         : default
 });
 
-#if (RELEASE)
-builder.WebHost.ConfigureKestrel(o =>
+if (WindowsServiceHelpers.IsWindowsService())
 {
-    o.ListenLocalhost(5099, l =>
+    // Run the Kestrel server on HTTP/2 over HTTP only
+    builder.WebHost.ConfigureKestrel(o =>
     {
-        l.Protocols = HttpProtocols.Http2;
+        o.ListenLocalhost(5099, l =>
+        {
+            l.Protocols = HttpProtocols.Http2;
+        });
     });
-});
-#endif
+}
 
 builder.Host.UseWindowsService();
 
